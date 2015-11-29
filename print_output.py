@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import stargazer
+from pystargazer import *
 
 serial_device = sys.argv[1]
-sg = stargazer.StarGazer(serial_device)
+sg = StarGazer(serial_device)
 while True:
     line = sg.read_raw_output()
     print(line)
