@@ -15,8 +15,12 @@ READ_COMMAND_PREFIX = '@'
 WRITE_COMMAND_PREFIX = '#'
 RETURN_VALUE_PREFIX = '$'
 ACK_PREFIX = '!'
-SG_MESSAGE_PREFIX = '*'
+MESSAGE_PREFIX = '*'
 VALUE_SEPARATER = '|'
+
+MAP_MODE_DATA_REGEX = r'~\^I([0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([0-9]+\.?[0-9]+)`'
+DEAD_ZONE_MESSAGE_REGEX = r'~\*DeadZone`'
+MAP_ID_MESSAGE_REGEX = STX + MESSAGE_PREFIX + r'MAPID\|([0-9]+)' + ETX
 
 _SEND_CHARACTER_INTERVAL = 0.01
 _CHECK_ACK_WAIT_TIME = 1.0
@@ -71,6 +75,12 @@ class SerialManager(object):
         self.send_bytes(b)
 
 
+    def read_data(self, timeout=None):
+        reg = r'(' + MAP_MODE_DATA_REGEX + r')|(' + DEAD_ZONE_MESSAGE_REGEX + r')'
+        res = self.read_only_required_response(reg, timeout)
+        return res
+
+
     def read_return_value(self, message):
         correct_res_prefix = STX + RETURN_VALUE_PREFIX + message + VALUE_SEPARATER
         res = self.read_only_required_response(correct_res_prefix, _READ_RESPONSE_WAIT_TIME)
@@ -78,7 +88,7 @@ class SerialManager(object):
             val = res.split(VALUE_SEPARATER)[1].split(ETX)[0]
             return val
         else:
-            return False
+            return None
 
 
     def check_parameter_update(self):

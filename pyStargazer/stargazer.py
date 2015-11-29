@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from .serial_manager import *
+from . import serial_manager
 from enum import Enum
 import re
 
@@ -30,7 +30,7 @@ class StarGazer(object):
     """docstring for StarGazer"""
     def __init__(self, serial_device_name):
         super(StarGazer, self).__init__()
-        self.sm = SerialManager(serial_device_name)
+        self.sm = serial_manager.SerialManager(serial_device_name)
 
 
     def read_raw_output(self, timeout=None):
@@ -38,17 +38,17 @@ class StarGazer(object):
         return output
 
     def read_status(self, timeout=None):
-        start_time = time.time()
-        reg = r'~\^I([0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([0-9]+\.?[0-9]+)`'
-        res = self.sm.read_only_required_response(reg, timeout)
-        if res:
-            match = re.search(reg, res)
+        res = self.sm.read_data(timeout=timeout)
+        match = re.search(serial_manager.MAP_MODE_DATA_REGEX, res)
+        if match:
             mark_id = int(match.group(1))
             angle = float(match.group(2))
             x = float(match.group(3))
             y = float(match.group(4))
             z = float(match.group(5))
             return mark_id, angle, x, y, z
+        elif re.match(serial_manager.DEAD_ZONE_MESSAGE_REGEX, res):
+            return "DeadZone"
         else:
             None
 
