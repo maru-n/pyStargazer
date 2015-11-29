@@ -9,8 +9,9 @@ serial_device = sys.argv[1]
 sg = StarGazer(serial_device)
 print("# time Id, angle, x, y, x")
 while True:
-    data = sg.read_status()
-    if data == "DeadZone":
-        print("#", time.time(), data)
-    else:
-        print(time.time(), data[0], data[1], data[2], data[3], data[4])
+    data = sg.read_status(ignore_deadzone=False)
+    if data:
+        if data == "DeadZone":
+            print("#", time.time(), data)
+        else:
+            print(time.time(), data[0], data[1], data[2], data[3], data[4])

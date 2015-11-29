@@ -37,7 +37,7 @@ class StarGazer(object):
         output = self.sm.read_line(timeout = timeout)
         return output
 
-    def read_status(self, timeout=None):
+    def read_status(self, timeout=None, ignore_deadzone=True):
         res = self.sm.read_data(timeout=timeout)
         match = re.search(serial_manager.MAP_MODE_DATA_REGEX, res)
         if match:
@@ -47,7 +47,7 @@ class StarGazer(object):
             y = float(match.group(4))
             z = float(match.group(5))
             return mark_id, angle, x, y, z
-        elif re.match(serial_manager.DEAD_ZONE_MESSAGE_REGEX, res):
+        elif re.match(serial_manager.DEAD_ZONE_MESSAGE_REGEX, res) and not ignore_deadzone:
             return "DeadZone"
         else:
             None
