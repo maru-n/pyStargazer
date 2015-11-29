@@ -40,20 +40,17 @@ class StarGazer(object):
     def read_status(self, timeout=None):
         start_time = time.time()
         reg = r'~\^I([0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([0-9]+\.?[0-9]+)`'
-        remain_time = timeout
-        while (timeout==None) or (remain_time >= 0.):
-            raw_output = self.read_raw_output(timeout=remain_time)
-            match = re.search(reg, raw_output)
-            if match:
-                mark_id = int(match.group(1))
-                angle = float(match.group(2))
-                x = float(match.group(3))
-                y = float(match.group(4))
-                z = float(match.group(5))
-                return mark_id, angle, x, y, z
-            elif timeout != None:
-                remain_time = timeout - (time.time() - start_time)
-        return None
+        res = self.sm.read_only_required_response(reg, timeout)
+        if res:
+            match = re.search(reg, res)
+            mark_id = int(match.group(1))
+            angle = float(match.group(2))
+            x = float(match.group(3))
+            y = float(match.group(4))
+            z = float(match.group(5))
+            return mark_id, angle, x, y, z
+        else:
+            None
 
     def calc_stop(self):
         self.send_command(COMMAND.CalcStop)
