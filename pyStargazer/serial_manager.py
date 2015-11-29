@@ -30,19 +30,19 @@ class SerialManager(object):
                                     bytesize=serial.EIGHTBITS,
                                     parity=serial.PARITY_NONE,
                                     stopbits=serial.STOPBITS_ONE,
-                                    timeout=1)
+                                    timeout=0)
 
 
-    def read_line(self):
+    def read_line(self, timeout=None):
         byte_data = b''
         etx_byte = bytes(ETX, 'ascii')
+        start_time = time.time()
         while True:
             c = self.serial.read(1)
-            if c:
-                byte_data += c
-                if c == etx_byte:
-                    break
-            else:
+            byte_data += c
+            if c == etx_byte:
+                break
+            if (timeout != None) and (time.time()-start_time > timeout):
                 break
         return byte_data.decode()
 

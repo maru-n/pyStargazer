@@ -3,6 +3,7 @@
 
 from .serial_manager import *
 from enum import Enum
+import re
 
 
 class COMMAND(Enum):
@@ -32,12 +33,27 @@ class StarGazer(object):
         self.sm = SerialManager(serial_device_name)
 
 
-    def read_raw_output(self):
-        while True:
-            output = self.sm.read_line()
-            if output:
-                return output
+    def read_raw_output(self, timeout=None):
+        output = self.sm.read_line(timeout = timeout)
+        return output
 
+    def read_status(self, timeout=None):
+        start_time = time.time()
+        reg = r'~\^I([0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([0-9]+\.?[0-9]+)`'
+        remain_time = timeout
+        while (timeout==None) or (remain_time >= 0.):
+            raw_output = self.read_raw_output(timeout=remain_time)
+            match = re.search(reg, raw_output)
+            if match:
+                mark_id = int(match.group(1))
+                angle = float(match.group(2))
+                x = float(match.group(3))
+                y = float(match.group(4))
+                z = float(match.group(5))
+                return mark_id, angle, x, y, z
+            elif timeout != None:
+                remain_time = timeout - (time.time() - start_time)
+        return None
 
     def calc_stop(self):
         self.send_command(COMMAND.CalcStop)
