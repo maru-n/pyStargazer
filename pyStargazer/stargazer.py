@@ -12,7 +12,7 @@ class COMMAND(Enum):
     SetEnd = 'SetEnd'
     Reset = 'Reset'
     HeightCalc = 'HeightCalc'
-    MapMode = 'MapMode'
+    MapModeStart = 'MapMode|Start'
 
 
 class PARAMETER(Enum):
@@ -31,6 +31,8 @@ class StarGazer(object):
     def __init__(self, serial_device_name):
         super(StarGazer, self).__init__()
         self.sm = serial_manager.SerialManager(serial_device_name)
+        self.is_building_map = None
+        self.find_map_id = None
 
 
     def read_raw_output(self, timeout=None):
@@ -38,19 +40,9 @@ class StarGazer(object):
         return output
 
     def read_status(self, timeout=None, ignore_deadzone=True):
-        res = self.sm.read_data(timeout=timeout, ignore_deadzone= ignore_deadzone)
-        match = re.search(serial_manager.MAP_MODE_DATA_REGEX, res)
-        if match:
-            mark_id = int(match.group(1))
-            angle = float(match.group(2))
-            x = float(match.group(3))
-            y = float(match.group(4))
-            z = float(match.group(5))
-            return mark_id, angle, x, y, z
-        elif re.match(serial_manager.DEAD_ZONE_MESSAGE_REGEX, res):
-            return "DeadZone"
-        else:
-            None
+        res, data = self.sm.read_data(timeout=timeout, ignore_deadzone= ignore_deadzone)
+        return data
+
 
     def calc_stop(self):
         self.send_command(COMMAND.CalcStop)
@@ -68,6 +60,31 @@ class StarGazer(object):
 
     def reset(self, trial_num = 10):
         self.send_command(COMMAND.Reset)
+        if not self.sm.check_parameter_update():
+            raise Exception("Reset is failed.")
+
+
+    def start_map_building(self):
+        self.send_command(COMMAND.MapModeStart)
+        self.is_building_map = True
+        self.find_map_id = 1
+
+
+    def find_next_map_id(self):
+        res, new_id, is_last_marker = self.sm.read_new_mapid_message(timeout=None)
+        self.find_map_id += 1
+        if is_last_marker:
+            self.sm.check_parameter_update()
+            self.is_building_map = False
+        return new_id
+
+
+    def calc_height(self):
+        #TODO:
+        print("Not implemented!!")
+        self.send_command(COMMAND.HeightCalc)
+        if not self.sm.check_parameter_update():
+            raise Exception("Parameter is not updated. Did you set new parameters?")
 
 
     def send_command(self, command, trial_num=5):

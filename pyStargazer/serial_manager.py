@@ -20,12 +20,14 @@ VALUE_SEPARATER = '|'
 
 MAP_MODE_DATA_REGEX = r'~\^I([0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([0-9]+\.?[0-9]+)`'
 DEAD_ZONE_MESSAGE_REGEX = r'~\*DeadZone`'
-MAP_ID_MESSAGE_REGEX = STX + MESSAGE_PREFIX + r'MAPID\|([0-9]+)' + ETX
+MAP_ID_MESSAGE_REGEX = r'~\*MAPID\|([0-9]+)`'
+MAP_DATA_SAVE_REGEX = r'~\!MapDataSave`'
+PARAMETER_UPDATE_REGEX = r'~\!ParameterUpdate`'
 
 _SEND_CHARACTER_INTERVAL = 0.01
 _CHECK_ACK_WAIT_TIME = 1.0
 _READ_RESPONSE_WAIT_TIME = 1.0
-_PARAMETER_UPDATE_WAIT_TIME = 5.0
+_PARAMETER_UPDATE_WAIT_TIME = 30.0
 
 
 class SerialManager(object):
@@ -53,19 +55,16 @@ class SerialManager(object):
                 break
         try:
             line = byte_data.decode()
-            if DEBUG:
-                print('\033[94m [DEBUG] \033[0m', line)
+            self.__print_debug("recv: "+line)
             return line
         except Exception as e:
-            if DEBUG:
-                print(e)
+            self.__print_debug(e)
             return ""
-
 
 
     def send_write_message(self, message, arg=None):
         if arg != None:
-            message += VALUE_SEPARATER + arg
+            message += VALUE_SEPARATER + str(arg)
         b = bytes(STX + WRITE_COMMAND_PREFIX + message + ETX, 'ascii')
         self.send_bytes(b)
 
@@ -81,7 +80,27 @@ class SerialManager(object):
         else:
             reg = r'(' + MAP_MODE_DATA_REGEX + r')|(' + DEAD_ZONE_MESSAGE_REGEX + r')'
         res = self.read_only_required_response(reg, timeout)
-        return res
+        match = re.search(MAP_MODE_DATA_REGEX, res)
+        if match:
+            mark_id = int(match.group(1))
+            angle = float(match.group(2))
+            x = float(match.group(3))
+            y = float(match.group(4))
+            z = float(match.group(5))
+            data = [mark_id, angle, x, y, z]
+            return res, data
+        elif re.match(DEAD_ZONE_MESSAGE_REGEX, res):
+            return res, "DeadZone"
+        else:
+            return res, None
+
+
+    def read_new_mapid_message(self, timeout=None):
+        res = self.read_only_required_response(MAP_ID_MESSAGE_REGEX, timeout)
+        new_id = int(re.search(MAP_ID_MESSAGE_REGEX, res).group(1))
+        next_res = self.read_line()
+        is_last_marker = bool(re.match(MAP_DATA_SAVE_REGEX, next_res))
+        return res, new_id, is_last_marker
 
 
     def read_return_value(self, message):
@@ -95,18 +114,16 @@ class SerialManager(object):
 
 
     def check_parameter_update(self):
-        correct_res = STX + ACK_PREFIX + "ParameterUpdate" + ETX
-        res = self.read_only_required_response(correct_res, _PARAMETER_UPDATE_WAIT_TIME)
+        res = self.read_only_required_response(PARAMETER_UPDATE_REGEX, _PARAMETER_UPDATE_WAIT_TIME)
         if res:
             return True
         else:
             return False
 
 
-
     def check_ack(self, message, arg=None):
         if arg != None:
-            message += VALUE_SEPARATER + arg
+            message += VALUE_SEPARATER + str(arg)
         correct_res = STX + ACK_PREFIX + message + ETX
         res = self.read_only_required_response(correct_res, _CHECK_ACK_WAIT_TIME)
         if res:
@@ -137,3 +154,9 @@ class SerialManager(object):
         for b in _bytes:
             time.sleep(_SEND_CHARACTER_INTERVAL)
             self.serial.write([b])
+        self.__print_debug("send: "+str(_bytes))
+
+
+    def __print_debug(self, msg):
+        if DEBUG:
+            print('\033[94m [DEBUG] \033[0m', msg)

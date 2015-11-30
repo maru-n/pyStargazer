@@ -8,9 +8,8 @@ serial_device = sys.argv[1]
 sg = StarGazer(serial_device)
 
 sg.calc_stop()
-
+sg.reset()
 sg.write_parameter(PARAMETER.MarkType, 'HLD1L')
 sg.write_parameter(PARAMETER.MarkMode, 'Alone')
 sg.save_settings()
-
 sg.calc_start()
