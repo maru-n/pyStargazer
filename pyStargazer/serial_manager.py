@@ -75,8 +75,11 @@ class SerialManager(object):
         self.send_bytes(b)
 
 
-    def read_data(self, timeout=None):
-        reg = r'(' + MAP_MODE_DATA_REGEX + r')|(' + DEAD_ZONE_MESSAGE_REGEX + r')'
+    def read_data(self, timeout=None, ignore_deadzone=True):
+        if ignore_deadzone:
+            reg = MAP_MODE_DATA_REGEX
+        else:
+            reg = r'(' + MAP_MODE_DATA_REGEX + r')|(' + DEAD_ZONE_MESSAGE_REGEX + r')'
         res = self.read_only_required_response(reg, timeout)
         return res
 
