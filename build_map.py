@@ -13,7 +13,7 @@ sg.calc_stop()
 
 print("Number of Landmark?")
 while True:
-    print(">>", end="")
+    print(">> ", end="")
     in_str = input()
     try:
         id_num = int(in_str)
@@ -28,11 +28,11 @@ if current_status:
 else:
     print("1st Landmark ID? (current marker is not available.)")
 while True:
-    print(">>", end="")
+    print(">> ", end="")
     in_str = input()
     if in_str == "" and current_status:
         ref_id = current_mark_id
-        print(ref_id)
+        print("\033[1A>>", str(ref_id))
         break
     try:
         ref_id = int(in_str)
@@ -47,14 +47,14 @@ print("HLD1: 1.1<=height<=2.9")
 print("HLD2: 2.9<=height<=4.5")
 print("HLD3: 4.5<=height<=6.0")
 print("HLDxS: 3x3 Landmark,  HLDxL 4x4 Landmark. (Default is %s)" % default_mark_type)
-print(">>", end="")
+print(">> ", end="")
 mark_type = input()
 if mark_type == "":
     mark_type = default_mark_type
-    print(mark_type)
+    print("\033[1A>>", mark_type)
 
 print("Setting is Ok? (y/n)")
-print(">>", end="")
+print(">> ", end="")
 if not input() in ['y', 'Y', 'yes', 'Yes', 'YES']:
     sys.exit()
 
@@ -74,23 +74,25 @@ for p in PARAMETER:
     res = sg.read_parameter(p)
     print("%10s : %s"%(p.name, res))
 
-def find_new_id_callback(new_id):
-    print("Find #" + str(new_id) + " Don't move!")
-
-def save_new_id_callback(new_id, saved_id_num):
-    print("Saved #%i  (%i/%i)" % (new_id, saved_id_num, id_num))
-    if total_id_num != id_num:
-        print("Go to next marker!")
-
 sg.start_map_building()
 while sg.is_building_map:
-    print("Go to next marker!")
-    i = sg.find_next_map_id()
-    print("New Id:", i)
+    try:
+        print("Go to next marker!")
+        i = sg.find_next_map_id()
+        print("New Id:", i)
+    except DeadZoneException as e:
+        print("Dead zone! go back previous marker!")
+        sg.wait_leave_deadzone()
+        print("OK! leaved deadzone!")
 
 print("Finished!")
 
 sg.calc_start()
 
+print("# angle, x, y, x")
 while True:
-    print(sg.read_raw_output())
+    try:
+        data = sg.read_status(ignore_deadzone=False)
+        print(data[1], data[2], data[3], data[4])
+    except DeadZoneException as e:
+        print("DeadZone.")

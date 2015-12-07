@@ -29,7 +29,6 @@ _CHECK_ACK_WAIT_TIME = 1.0
 _READ_RESPONSE_WAIT_TIME = 1.0
 _PARAMETER_UPDATE_WAIT_TIME = 30.0
 
-DEAD_ZONE = "DeadZone"
 
 class SerialManager(object):
     """docstring for SerialManager"""
@@ -41,9 +40,15 @@ class SerialManager(object):
                                     parity=serial.PARITY_NONE,
                                     stopbits=serial.STOPBITS_ONE,
                                     timeout=0)
+        self.current_line = ""
+        self.return_current_line_on_next_read = False
 
 
     def read_line(self, timeout=None):
+        if self.return_current_line_on_next_read:
+            self.return_current_line_on_next_read = False
+            return self.current_line
+
         byte_data = b''
         etx_byte = bytes(ETX, 'ascii')
         start_time = time.time()
@@ -57,10 +62,16 @@ class SerialManager(object):
         try:
             line = byte_data.decode()
             self.__print_debug("recv: "+line)
+            self.current_line = line
             return line
         except Exception as e:
             self.__print_debug(e)
             return ""
+
+    def fetch_next_line(self, timeout=None):
+        line = self.read_line(timeout=timeout)
+        self.return_current_line_on_next_read = True
+        return line
 
 
     def send_write_message(self, message, arg=None):
@@ -89,19 +100,33 @@ class SerialManager(object):
             y = float(match.group(4))
             z = float(match.group(5))
             data = [mark_id, angle, x, y, z]
-            return res, data
+            is_deadzone = False
         elif re.match(DEAD_ZONE_MESSAGE_REGEX, res):
-            return res, DEAD_ZONE
+            data = None
+            is_deadzone = True
         else:
-            return res, None
+            raise Exception('Unpredicted response: ' + str(res))
+        return res, data, is_deadzone
 
 
-    def read_new_mapid_message(self, timeout=None):
-        res = self.read_only_required_response(MAP_ID_MESSAGE_REGEX, timeout)
-        new_id = int(re.search(MAP_ID_MESSAGE_REGEX, res).group(1))
-        next_res = self.read_line()
-        is_last_marker = bool(re.match(MAP_DATA_SAVE_REGEX, next_res))
-        return res, new_id, is_last_marker
+    def read_new_mapid(self, timeout=None, ignore_deadzone=False):
+        if ignore_deadzone:
+            reg = MAP_ID_MESSAGE_REGEX
+        else:
+            reg = r'(' + MAP_ID_MESSAGE_REGEX + r')|(' + DEAD_ZONE_MESSAGE_REGEX + r')'
+        res = self.read_only_required_response(reg, timeout)
+        match = re.search(MAP_ID_MESSAGE_REGEX, res)
+        if match:
+            new_id = int(match.group(1))
+            is_last_marker = bool(re.match(MAP_DATA_SAVE_REGEX, self.fetch_next_line()))
+            is_deadzone = False
+        elif re.match(DEAD_ZONE_MESSAGE_REGEX, res):
+            new_id = None
+            is_last_marker = False
+            is_deadzone = True
+        else:
+            raise Exception('Unpredicted response: ' + str(res))
+        return res, new_id, is_last_marker, is_deadzone
 
 
     def read_return_value(self, message):

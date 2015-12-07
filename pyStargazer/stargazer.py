@@ -47,9 +47,9 @@ class StarGazer(object):
         output = self.sm.read_line(timeout = timeout)
         return output
 
-    def read_status(self, timeout=None, ignore_deadzone=True):
-        res, data = self.sm.read_data(timeout=timeout, ignore_deadzone=ignore_deadzone)
-        if data == serial_manager.DEAD_ZONE:
+    def read_status(self, timeout=None, ignore_deadzone=False):
+        res, data, is_deadzone = self.sm.read_data(timeout=timeout, ignore_deadzone=ignore_deadzone)
+        if is_deadzone:
             raise DeadZoneException()
         return data
 
@@ -80,13 +80,21 @@ class StarGazer(object):
         self.find_map_id = 1
 
 
-    def find_next_map_id(self):
-        res, new_id, is_last_marker = self.sm.read_new_mapid_message(timeout=None)
+    def find_next_map_id(self, ignore_deadzone=False):
+        res, new_id, is_last_marker, is_deadzone = self.sm.read_new_mapid(timeout=None, ignore_deadzone=ignore_deadzone)
+        if is_deadzone:
+            raise DeadZoneException()
         self.find_map_id += 1
         if is_last_marker:
             self.sm.check_parameter_update()
             self.is_building_map = False
         return new_id
+
+
+    def wait_leave_deadzone(self):
+        while re.match(serial_manager.DEAD_ZONE_MESSAGE_REGEX, self.sm.current_line):
+            self.sm.fetch_next_line()
+        return
 
 
     def calc_height(self):
