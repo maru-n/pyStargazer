@@ -7,6 +7,12 @@ from pystargazer import *
 serial_device = sys.argv[1]
 sg = StarGazer(serial_device)
 
+print("reset stargazer...")
+sg.calc_stop()
+sg.reset()
+sg.write_parameter(PARAMETER.MarkType, 'HLD1L')
+sg.write_parameter(PARAMETER.MarkMode, 'Alone')
+sg.save_settings()
 sg.calc_start()
 current_status = sg.read_status(timeout=1)
 sg.calc_stop()
@@ -77,11 +83,11 @@ for p in PARAMETER:
 sg.start_map_building()
 while sg.is_building_map:
     try:
-        print("Go to next marker!")
+        print("Go to middle point between marker!")
         i = sg.find_next_map_id()
-        print("New Id:", i)
+        print("New Id:", i, "(%i/%i)"%(sg.find_map_id, id_num))
     except DeadZoneException as e:
-        print("Dead zone! go back previous marker!")
+        print("Dead zone! go back previous marker...")
         sg.wait_leave_deadzone()
         print("OK! leaved deadzone!")
 
