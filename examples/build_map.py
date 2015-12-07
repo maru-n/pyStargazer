@@ -83,7 +83,7 @@ for p in PARAMETER:
 sg.start_map_building()
 while sg.is_building_map:
     try:
-        print("Go to middle point between marker!")
+        print("Go to middle point between marker and wait a few secconds.")
         i = sg.find_next_map_id()
         print("New Id:", i, "(%i/%i)"%(sg.find_map_id, id_num))
     except DeadZoneException as e:
