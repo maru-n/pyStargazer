@@ -6,6 +6,14 @@ from enum import Enum
 import re
 
 
+class DeadZoneException(Exception):
+    def __init__(self):
+        pass
+
+    def __str__(self):
+        return repr("DeadZone")
+
+
 class COMMAND(Enum):
     CalcStop = 'CalcStop'
     CalcStart = 'CalcStart'
@@ -40,7 +48,9 @@ class StarGazer(object):
         return output
 
     def read_status(self, timeout=None, ignore_deadzone=True):
-        res, data = self.sm.read_data(timeout=timeout, ignore_deadzone= ignore_deadzone)
+        res, data = self.sm.read_data(timeout=timeout, ignore_deadzone=ignore_deadzone)
+        if data == serial_manager.DEAD_ZONE:
+            raise DeadZoneException()
         return data
 
 

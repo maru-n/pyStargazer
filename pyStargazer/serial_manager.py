@@ -29,6 +29,7 @@ _CHECK_ACK_WAIT_TIME = 1.0
 _READ_RESPONSE_WAIT_TIME = 1.0
 _PARAMETER_UPDATE_WAIT_TIME = 30.0
 
+DEAD_ZONE = "DeadZone"
 
 class SerialManager(object):
     """docstring for SerialManager"""
@@ -90,7 +91,7 @@ class SerialManager(object):
             data = [mark_id, angle, x, y, z]
             return res, data
         elif re.match(DEAD_ZONE_MESSAGE_REGEX, res):
-            return res, "DeadZone"
+            return res, DEAD_ZONE
         else:
             return res, None
 
