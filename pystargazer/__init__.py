@@ -5,4 +5,4 @@
 from .stargazer import *
 
 __author__  = 'marun'
-__version__ = '0.0.1'
+__version__ = '0.1.0'
