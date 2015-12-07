@@ -2,36 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from . import serial_manager
-from enum import Enum
+from .utils import *
 import re
-
-
-class DeadZoneException(Exception):
-    def __init__(self):
-        pass
-
-    def __str__(self):
-        return repr("DeadZone")
-
-
-class COMMAND(Enum):
-    CalcStop = 'CalcStop'
-    CalcStart = 'CalcStart'
-    SetEnd = 'SetEnd'
-    Reset = 'Reset'
-    HeightCalc = 'HeightCalc'
-    MapModeStart = 'MapMode|Start'
-
-
-class PARAMETER(Enum):
-    Version = 'Version'
-    BaudRate = 'BaudRate'
-    IDNum = 'IDNum'
-    RefID = 'RefID'
-    HeightFix = 'HeightFix'
-    MarkHeight = 'MarkHeight'
-    MarkType = 'MarkType'
-    MarkMode = 'MarkMode'
 
 
 class StarGazer(object):
