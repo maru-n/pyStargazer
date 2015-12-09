@@ -14,5 +14,4 @@ setup(
         packages         = ['pystargazer'],
         install_requires = [],
         requires         =  ['pyserial'],
-        package_data     = {'': ['examples/*.py']},
         )
