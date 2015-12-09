@@ -7,7 +7,7 @@ from pystargazer import *
 
 serial_device = sys.argv[1]
 sg = StarGazer(serial_device)
-print("# time Id, angle, x, y, x")
+print("# time Id, angle, x, y, z")
 while True:
     try:
         data = sg.read_status(ignore_deadzone=False)
