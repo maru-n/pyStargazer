@@ -2,15 +2,17 @@
 # coding: utf-8
 
 
-from setuptools import setup, find_packages
+from setuptools import setup
 from pystargazer import __author__, __version__
 
 setup(
-        name             = 'pyStargazer',
+        name             = 'pystargazer',
         version          = __version__,
-        description      = 'python tools for StarGazer',
+        description      = 'python class to use StarGazer by Hagisonic.',
         author           = __author__,
         url              = 'https://github.com/maru-n/pyStargazer.git',
-        packages         = find_packages(),
+        packages         = ['pystargazer'],
         install_requires = [],
+        requires         =  ['pyserial'],
+        package_data     = {'pystargazer': ['../examples/*.py']},
         )
