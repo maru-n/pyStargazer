@@ -7,7 +7,11 @@ from pystargazer import *
 
 serial_device = sys.argv[1]
 sg = StarGazer(serial_device)
-print("# time marker_id, x, y, z, angle")
+print("# angle x y z marker1 marker2")
 while True:
-    data = sg.read_status()
-    print(data)
+    time, location, markers = sg.read_status()
+    if location is None:
+        print("Dead zone.")
+    else:
+        print(*location, end=" ")
+        print(*markers)

@@ -7,8 +7,9 @@ from threading import Thread, Event
 import serial
 import time
 import re
+import numpy as np
 
-DEBUG = False
+DEBUG = True
 
 STX = '~'  # start of text data
 ETX = '`'  # end of text data
@@ -29,40 +30,26 @@ TWO_DATA_REGEX = STX + r'\^2' + DATA_REGEX + r'\|' + DATA_REGEX + ETX
 
 MAP_MODE_DATA_REGEX = r'~\^I([0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([0-9]+\.?[0-9]+)`'
 DEAD_ZONE_MESSAGE_REGEX = r'~\*DeadZone`'
-MAP_ID_MESSAGE_REGEX = r'~\*MAPID\|([0-9]+)`'
-MAP_DATA_SAVE_REGEX = r'~\!MapDataSave`'
-PARAMETER_UPDATE_REGEX = r'~\!ParameterUpdate`'
 
-_SEND_CHARACTER_INTERVAL = 0.01
-_CHECK_ACK_WAIT_TIME = 1.0
-_READ_RESPONSE_WAIT_TIME = 1.0
-_PARAMETER_UPDATE_WAIT_TIME = 50.0
 
 class StarGazer(object):
     """docstring for StarGazer"""
 
     def __init__(self, serial_device_name, map_coordinate_file=None, multi_id=True):
         if not multi_id:
-            print("Single ID version is not implemented now. use legacy version.")
+            raise StarGazerException("Single ID version is not implemented now. use legacy version.")
         super(StarGazer, self).__init__()
         self.__is_multi_id = multi_id
-        if self.__is_multi_id:
-            self.COMMAND = COMMAND_MULTI_ID
-            self.PARAMETER = PARAMETER_MULTI_ID
-        else:
-            self.COMMAND = COMMAND_SINGLE_ID
-            self.PARAMETER = PARAMETER_SINGLE_ID
-
-        self.update_time = None
-        self.marker_id = 0
-        self.x = 0.
-        self.y = 0.
-        self.z = 0.
-        self.angle = 0.
-        self.dead_zone = False
-
+        self.__update_time = None
+        self.__latest_markers = None
         self.__latest_output = None
-        self.__next_serial_message = None
+        self.__latest_location = None  # [angle, x, y, z]
+        self.__is_dead_zone = False
+
+        self.__map = {24836: np.array([0, 0, 0, 0]),
+                      25094: np.array([0, 200, 0, 0]),
+                      24594: np.array([0, 0, -200, 0]),
+                      24706: np.array([0, 200, -200, 0])}
 
         self.__serial = serial.Serial(serial_device_name,
                                     baudrate=115200,
@@ -70,7 +57,7 @@ class StarGazer(object):
                                     parity=serial.PARITY_NONE,
                                     stopbits=serial.STOPBITS_ONE,
                                     timeout=0)
-        self.update_event = Event()
+        self.__update_event = Event()
         self.__serial_io_thread = Thread(target=self.__run_serial_io)
         self.__serial_io_thread.start()
 
@@ -78,11 +65,14 @@ class StarGazer(object):
     # blocking method
     def read_status(self):
         self.__wait_update()
-        return [self.update_time, self.marker_id, self.x, self.y, self.z, self.angle]
+        return self.get_latest_status()
 
 
     def get_latest_status(self):
-        return [self.update_time, self.marker_id, self.x, self.y, self.z, self.angle]
+        if self.__is_dead_zone:
+            return "DeadZone"
+        else:
+            return self.__update_time, self.__latest_location, self.__latest_markers
 
 
     # blocking method
@@ -101,15 +91,60 @@ class StarGazer(object):
 
 
     def __update(self):
-        self.update_event.clear()
+        self.__update_event.clear()
         line = self.__read_line(timeout=None)
-        if line is not None:
-            self.__latest_output = line;
-        self.update_event.set()
+        if line is None:
+            return
+
+        update_time = time.time()
+        two_data_match = re.search(TWO_DATA_REGEX, line)
+        one_data_match = re.search(ONE_DATA_REGEX, line)
+        if two_data_match:
+            marker_id_1 = int(two_data_match.groups()[0])
+            location_1 = [float(v) for v in two_data_match.groups()[1:5]]
+            marker_id_2 = int(two_data_match.groups()[5])
+            location_2 = [float(v) for v in two_data_match.groups()[6:10]]
+            location, markers = self.__calc_location(marker_id_1, location_1, marker_id_2, location_2)
+            self.__update_time, self.__latest_location, self.__latest_markers = update_time, location, markers
+
+        elif one_data_match:
+            marker_id_1 = int(one_data_match.groups()[0])
+            location_1 = [float(v) for v in one_data_match.groups()[1:5]]
+            location, markers = self.__calc_location(marker_id_1, location_1, None, None)
+            self.__update_time, self.__latest_location, self.__latest_markers = update_time, location, markers
+
+        elif re.match(DEAD_ZONE_MESSAGE_REGEX, line):
+            self.__update_time, self.__latest_location = update_time, None
+
+        else:
+            raise Exception('Invalid response: ' + line)
+
+        self.__update_event.set()
 
 
     def __wait_update(self):
-        self.update_event.wait()
+        self.__update_event.wait()
+
+
+    def __calc_location(self, marker_id_1, location_1, marker_id_2, location_2):
+        try:
+            abs_location_1 = self.__map[marker_id_1] + location_1
+        except KeyError as e:
+            abs_location_1 = None
+        try:
+            abs_location_2 = self.__map[marker_id_2] + location_2
+        except KeyError as e:
+            abs_location_2 = None
+
+        if abs_location_1 is None and abs_location_2 is None:
+            return None, None
+        elif abs_location_1 is None:
+            return abs_location_2, [marker_id_2]
+        elif abs_location_2 is None:
+            return abs_location_1, [marker_id_1]
+        else:
+            return (abs_location_1 + abs_location_2)/2., [marker_id_1, marker_id_2]
+
 
 
     def __read_line(self, timeout=None):
@@ -135,112 +170,3 @@ class StarGazer(object):
     def __print_debug(self, msg):
         if DEBUG:
             print('\033[94m [DEBUG] \033[0m', msg)
-
-
-
-
-    #====================
-    # Legacy code
-    #====================
-class StarGazerLegacy(object):
-    def __init__(self, serial_device_name):
-        super(StarGazer, self).__init__()
-        self.sm = serial_manager.SerialManager(serial_device_name)
-        self.is_building_map = None
-        self.find_map_id = None
-
-
-    def read_raw_output(self, timeout=None):
-        output = self.sm.read_line(timeout = timeout)
-        return output
-
-    def read_status(self, timeout=None, ignore_deadzone=False):
-        res, data, is_deadzone = self.sm.read_data(timeout=timeout, ignore_deadzone=ignore_deadzone)
-        if is_deadzone:
-            raise DeadZoneException()
-        return data
-
-
-    def calc_stop(self):
-        self.send_command(COMMAND.CalcStop)
-
-
-    def calc_start(self):
-        self.send_command(COMMAND.CalcStart)
-
-
-    def save_settings(self):
-        self.send_command(COMMAND.SetEnd)
-        if not self.sm.check_parameter_update():
-            raise Exception("Parameter is not updated. Did you set new parameters?")
-
-
-    def reset(self, trial_num = 10):
-        self.send_command(COMMAND.Reset)
-        if not self.sm.check_parameter_update():
-            raise Exception("Reset is failed.")
-
-
-    def start_map_building(self):
-        self.send_command(COMMAND.MapModeStart)
-        self.is_building_map = True
-        self.find_map_id = 1
-
-
-    def find_next_map_id(self, ignore_deadzone=False):
-        res, new_id, is_last_marker, is_deadzone = self.sm.read_new_mapid(timeout=None, ignore_deadzone=ignore_deadzone)
-        if is_deadzone:
-            raise DeadZoneException()
-        self.find_map_id += 1
-        if is_last_marker:
-            self.sm.check_parameter_update()
-            self.is_building_map = False
-        return new_id
-
-
-    def wait_leave_deadzone(self):
-        while re.match(serial_manager.DEAD_ZONE_MESSAGE_REGEX, self.sm.current_line):
-            self.sm.fetch_next_line()
-        return
-
-
-    def calc_height(self):
-        #TODO:
-        print("Not implemented!!")
-        self.send_command(COMMAND.HeightCalc)
-        if not self.sm.check_parameter_update():
-            raise Exception("Parameter is not updated. Did you set new parameters?")
-
-
-    def send_command(self, command, trial_num=5):
-        if not isinstance(command, COMMAND):
-            command = COMMAND(command)  # check command in COMMAND Class
-        msg = command.value
-        for i in range(trial_num):
-            self.sm.send_write_message(msg)
-            if self.sm.check_ack(msg):
-                return
-        raise Exception("Failed " + msg + " command")
-
-
-    def write_parameter(self, parameter, value, trial_num=5):
-        if not isinstance(parameter, PARAMETER):
-            parameter = PARAMETER(parameter)  # check parameter in PARAMETER Class
-        msg = parameter.value
-        for i in range(trial_num):
-            self.sm.send_write_message(msg, value)
-            if self.sm.check_ack(msg, value):
-                return
-        raise Exception("Failed write parameter: " + msg)
-
-
-    def read_parameter(self, parameter, trial_num=5):
-        if not isinstance(parameter, PARAMETER):
-            parameter = PARAMETER(parameter)  # check parameter in PARAMETER Class
-        msg = parameter.value
-        for i in range(trial_num):
-            self.sm.send_read_message(msg)
-            if self.sm.check_ack(msg):
-                val = self.sm.read_return_value(msg)
-                return val
-        raise Exception("Failed read parameter: " + msg)
