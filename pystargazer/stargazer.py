@@ -35,7 +35,7 @@ DEAD_ZONE_MESSAGE_REGEX = r'~\*DeadZone`'
 class StarGazer(object):
     """docstring for StarGazer"""
 
-    def __init__(self, serial_device_name, map_coordinate_file=None, multi_id=True):
+    def __init__(self, serial_device_name, map_file=None, multi_id=True):
         if not multi_id:
             raise StarGazerException("Single ID version is not implemented now. use legacy version.")
         super(StarGazer, self).__init__()
@@ -46,10 +46,12 @@ class StarGazer(object):
         self.__latest_location = None  # [angle, x, y, z]
         self.__is_dead_zone = False
 
-        self.__map = {24836: np.array([0, 0, 0, 0]),
-                      25094: np.array([0, 200, 0, 0]),
-                      24594: np.array([0, 0, -200, 0]),
-                      24706: np.array([0, 200, -200, 0])}
+        self.__map = {}
+        if map_file is not None:
+            for l in open(map_file):
+                values = l.split()
+                map_id = int(values[0])
+                self.__map[map_id] = np.array([float(v) for v in values[1:]])
 
         self.__serial = serial.Serial(serial_device_name,
                                     baudrate=115200,
@@ -104,20 +106,17 @@ class StarGazer(object):
             location_1 = [float(v) for v in two_data_match.groups()[1:5]]
             marker_id_2 = int(two_data_match.groups()[5])
             location_2 = [float(v) for v in two_data_match.groups()[6:10]]
-            location, markers = self.__calc_location(marker_id_1, location_1, marker_id_2, location_2)
-            self.__update_time, self.__latest_location, self.__latest_markers = update_time, location, markers
-
         elif one_data_match:
             marker_id_1 = int(one_data_match.groups()[0])
             location_1 = [float(v) for v in one_data_match.groups()[1:5]]
-            location, markers = self.__calc_location(marker_id_1, location_1, None, None)
-            self.__update_time, self.__latest_location, self.__latest_markers = update_time, location, markers
-
+            marker_id_2, location_2 = None
         elif re.match(DEAD_ZONE_MESSAGE_REGEX, line):
-            self.__update_time, self.__latest_location = update_time, None
-
+            marker_id_1, location_1, marker_id_2, location_2 = None
         else:
             raise Exception('Invalid response: ' + line)
+
+        location, markers = self.__calc_location(marker_id_1, location_1, marker_id_2, location_2)
+        self.__update_time, self.__latest_output, self.__latest_location, self.__latest_markers = update_time, line, location, markers
 
         self.__update_event.set()
 
