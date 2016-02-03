@@ -23,10 +23,9 @@ VALUE_SEPARATER = '|'
 # Message example:
 # ~^124610|-3.70|+22.96|+98.73|216.09`
 # ~^224610|-65.20|+22.18|+77.31|209.55|24594|-66.66|+22.79|-94.34|210.63`
-
 DATA_REGEX = r'([0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([0-9]+\.?[0-9]+)'
 ONE_DATA_REGEX = STX + r'\^1' + DATA_REGEX + ETX
-TWO_DATA_REGEX = STX + r'\^2' + DATA_REGEX + VALUE_SEPARATER + ETX
+TWO_DATA_REGEX = STX + r'\^2' + DATA_REGEX + r'\|' + DATA_REGEX + ETX
 
 MAP_MODE_DATA_REGEX = r'~\^I([0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([\+\-][0-9]+\.?[0-9]+)\|([0-9]+\.?[0-9]+)`'
 DEAD_ZONE_MESSAGE_REGEX = r'~\*DeadZone`'
@@ -47,25 +46,43 @@ class StarGazer(object):
             print("Single ID version is not implemented now. use legacy version.")
         super(StarGazer, self).__init__()
         self.__is_multi_id = multi_id
+        if self.__is_multi_id:
+            self.COMMAND = COMMAND_MULTI_ID
+            self.PARAMETER = PARAMETER_MULTI_ID
+        else:
+            self.COMMAND = COMMAND_SINGLE_ID
+            self.PARAMETER = PARAMETER_SINGLE_ID
+
+        self.update_time = None
+        self.marker_id = 0
+        self.x = 0.
+        self.y = 0.
+        self.z = 0.
+        self.angle = 0.
+        self.dead_zone = False
+
         self.__latest_output = None
-        self.serial = serial.Serial(serial_device_name,
+        self.__next_serial_message = None
+
+        self.__serial = serial.Serial(serial_device_name,
                                     baudrate=115200,
                                     bytesize=serial.EIGHTBITS,
                                     parity=serial.PARITY_NONE,
                                     stopbits=serial.STOPBITS_ONE,
                                     timeout=0)
         self.update_event = Event()
-        self.serial_io_thread = Thread(target=self.__run_serial_io)
-        self.serial_io_thread.start()
+        self.__serial_io_thread = Thread(target=self.__run_serial_io)
+        self.__serial_io_thread.start()
 
 
     # blocking method
     def read_status(self):
-        raise StarGazerException("Not implemented now.")
+        self.__wait_update()
+        return [self.update_time, self.marker_id, self.x, self.y, self.z, self.angle]
 
 
     def get_latest_status(self):
-        raise StarGazerException("Not implemented now.")
+        return [self.update_time, self.marker_id, self.x, self.y, self.z, self.angle]
 
 
     # blocking method
@@ -100,7 +117,7 @@ class StarGazer(object):
         etx_byte = bytes(ETX, 'ascii')
         start_time = time.time()
         while True:
-            c = self.serial.read(1)
+            c = self.__serial.read(1)
             byte_data += c
             if c == etx_byte:
                 break

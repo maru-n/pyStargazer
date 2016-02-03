@@ -18,7 +18,15 @@ class DeadZoneException(StarGazerException):
         super(DeadZoneException, self).__init__("DeadZone")
 
 
-class COMMAND(Enum):
+class COMMAND_MULTI_ID(Enum):
+    CalcStop = 'CalcStop'
+    CalcStart = 'CalcStart'
+    SetEnd = 'SetEnd'
+    Reset = 'Reset'
+    HeightCalc = 'HeightCalc'
+
+
+class COMMAND_SINGLE_ID(Enum):
     CalcStop = 'CalcStop'
     CalcStart = 'CalcStart'
     SetEnd = 'SetEnd'
@@ -27,12 +35,20 @@ class COMMAND(Enum):
     MapModeStart = 'MapMode|Start'
 
 
-class PARAMETER(Enum):
+class PARAMETER_MULTI_ID(Enum):
     Version = 'Version'
     BaudRate = 'BaudRate'
-    IDNum = 'IDNum'
-    RefID = 'RefID'
     HeightFix = 'HeightFix'
     MarkHeight = 'MarkHeight'
     MarkType = 'MarkType'
+
+
+class PARAMETER_SINGLE_ID(Enum):
+    Version = 'Version'
+    BaudRate = 'BaudRate'
+    HeightFix = 'HeightFix'
+    MarkHeight = 'MarkHeight'
+    MarkType = 'MarkType'
+    IDNum = 'IDNum'
+    RefID = 'RefID'
     MarkMode = 'MarkMode'
