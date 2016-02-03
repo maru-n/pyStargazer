@@ -61,11 +61,11 @@ class StarGazer(object):
 
     # blocking method
     def read_status(self):
-        return None
+        raise StarGazerException("Not implemented now.")
 
 
     def get_latest_status(self):
-        return this.current_status
+        raise StarGazerException("Not implemented now.")
 
 
     # blocking method
