@@ -3,10 +3,9 @@
 
 import sys
 from pystargazer import *
-import time
 
 serial_device = sys.argv[1]
 sg = StarGazer(serial_device)
 while True:
-    output = sg.read_output()
-    print(output)
+    line = sg.read_raw_output()
+    print(line)
