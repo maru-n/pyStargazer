@@ -8,8 +8,9 @@ import serial
 import time
 import re
 import numpy as np
+import warnings
 
-DEBUG = True
+DEBUG = False
 
 STX = '~'  # start of text data
 ETX = '`'  # end of text data
@@ -46,12 +47,7 @@ class StarGazer(object):
         self.__latest_location = None  # [angle, x, y, z]
         self.__is_dead_zone = False
 
-        self.__map = {}
-        if map_file is not None:
-            for l in open(map_file):
-                values = l.split()
-                map_id = int(values[0])
-                self.__map[map_id] = np.array([float(v) for v in values[1:]])
+        self.__map = self.__parse_map_file(map_file)
 
         self.__serial = serial.Serial(serial_device_name,
                                     baudrate=115200,
@@ -98,7 +94,6 @@ class StarGazer(object):
         if line is None:
             return
 
-        update_time = time.time()
         two_data_match = re.search(TWO_DATA_REGEX, line)
         one_data_match = re.search(ONE_DATA_REGEX, line)
         if two_data_match:
@@ -109,13 +104,15 @@ class StarGazer(object):
         elif one_data_match:
             marker_id_1 = int(one_data_match.groups()[0])
             location_1 = [float(v) for v in one_data_match.groups()[1:5]]
-            marker_id_2, location_2 = None
+            marker_id_2 = location_2 = None
         elif re.match(DEAD_ZONE_MESSAGE_REGEX, line):
-            marker_id_1, location_1, marker_id_2, location_2 = None
+            marker_id_1 = location_1 = marker_id_2 = location_2 = None
         else:
-            raise Exception('Invalid response: ' + line)
+            warnings.warn('Invalid response: ' + line)
+            #raise Exception('Invalid response: ' + line)
 
         location, markers = self.__calc_location(marker_id_1, location_1, marker_id_2, location_2)
+        update_time = time.time()
         self.__update_time, self.__latest_output, self.__latest_location, self.__latest_markers = update_time, line, location, markers
 
         self.__update_event.set()
@@ -136,14 +133,19 @@ class StarGazer(object):
             abs_location_2 = None
 
         if abs_location_1 is None and abs_location_2 is None:
-            return None, None
+            location = None
+            markers = None
         elif abs_location_1 is None:
-            return abs_location_2, [marker_id_2]
+            location = abs_location_2.tolist()
+            markers = [marker_id_2]
         elif abs_location_2 is None:
-            return abs_location_1, [marker_id_1]
+            location = abs_location_1.tolist()
+            markers = [marker_id_1]
         else:
-            return (abs_location_1 + abs_location_2)/2., [marker_id_1, marker_id_2]
+            location = ((abs_location_1 + abs_location_2)/2.).tolist()
+            markers = [marker_id_1, marker_id_2]
 
+        return location, markers
 
 
     def __read_line(self, timeout=None):
@@ -164,6 +166,17 @@ class StarGazer(object):
         except Exception as e:
             self.__print_debug(e)
             return None
+
+    def __parse_map_file(self, map_file):
+        m = {}
+        if map_file is None:
+            warnings.warn("Map file is not specified. Location data can not be calculate.")
+            return m
+
+        map_data = np.loadtxt(map_file, comments="#")
+        for marker_id, angle, x, y, z in map_data:
+            m[int(marker_id)] = np.array([float(angle), float(x), float(y), float(z)])
+        return m
 
 
     def __print_debug(self, msg):
