@@ -14,4 +14,5 @@ while True:
     if location is None:
         print("# Dead zone.")
     else:
-        print(time, *(location+markers))
+        #print(time, *(location+markers))
+        print(location[3])

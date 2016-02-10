@@ -98,12 +98,12 @@ class StarGazer(object):
         one_data_match = re.search(ONE_DATA_REGEX, line)
         if two_data_match:
             marker_id_1 = int(two_data_match.groups()[0])
-            location_1 = [float(v) for v in two_data_match.groups()[1:5]]
+            location_1 = [float(v)*0.01 for v in two_data_match.groups()[1:5]]
             marker_id_2 = int(two_data_match.groups()[5])
-            location_2 = [float(v) for v in two_data_match.groups()[6:10]]
+            location_2 = [float(v)*0.01 for v in two_data_match.groups()[6:10]]
         elif one_data_match:
             marker_id_1 = int(one_data_match.groups()[0])
-            location_1 = [float(v) for v in one_data_match.groups()[1:5]]
+            location_1 = [float(v)*0.01 for v in one_data_match.groups()[1:5]]
             marker_id_2 = location_2 = None
         elif re.match(DEAD_ZONE_MESSAGE_REGEX, line):
             marker_id_1 = location_1 = marker_id_2 = location_2 = None
