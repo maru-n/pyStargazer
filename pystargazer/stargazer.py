@@ -38,7 +38,7 @@ class Stargazer(object):
 
     # blocking method
     def fetch_data(self):
-        self.__wait_update()
+        self.__update_event.wait()
         return self.get_latest_data()
 
 
@@ -58,10 +58,6 @@ class Stargazer(object):
             return
         self.__latest_data = StargazerData(line, marker_map=self.__marker_map)
         self.__update_event.set()
-
-
-    def __wait_update(self):
-        self.__update_event.wait()
 
 
     def __read_line(self, timeout=None):
