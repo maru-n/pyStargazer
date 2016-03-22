@@ -4,6 +4,7 @@
 from .utils import *
 import time
 import re
+import warnings
 
 class StargazerData(object):
     """docstring for StargazerData"""

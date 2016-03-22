@@ -6,7 +6,12 @@ from pystargazer import *
 import time
 
 serial_device = sys.argv[1]
-sg = Stargazer(serial_device, sys.argv[2])
+if len(sys.argv) == 3:
+    markermap_filename = sys.argv[2]
+    sg = Stargazer(serial_device, markermap_filename)
+else:
+    sg = Stargazer(serial_device)
+
 while True:
     data = sg.fetch_data()
     print(data.raw_string)

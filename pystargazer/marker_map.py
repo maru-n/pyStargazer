@@ -12,7 +12,7 @@ class MarkerMap(object):
         self.__m = {}
         try:
             map_data = np.loadtxt(marker_map_file, comments="#")
-        except FileNotFoundError as e:
+        except Exception as e:
             return
 
         for marker_id, angle, x, y, z in map_data:
