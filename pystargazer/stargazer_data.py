@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from .utils import *
+import numpy as np
 import time
 import re
 import warnings
@@ -24,13 +25,15 @@ class StargazerData(object):
         one_data_match = re.search(MESSAGE_UTIL.ONE_DATA_REGEX, output_str)
 
         if two_data_match:
-            marker_id_1 = int(two_data_match.groups()[0])
-            location_1 = [float(v)*0.01 for v in two_data_match.groups()[1:5]]
-            marker_id_2 = int(two_data_match.groups()[5])
-            location_2 = [float(v)*0.01 for v in two_data_match.groups()[6:10]]
+            data = two_data_match.groups()
+            marker_id_1 = int(data[0])
+            location_1 = [float(data[1]) * np.pi / 180] + [float(v)*0.01 for v in data[2:5]]
+            marker_id_2 = int(data[5])
+            location_2 = [float(data[6]) * np.pi / 180] + [float(v)*0.01 for v in data[7:10]]
         elif one_data_match:
-            marker_id_1 = int(one_data_match.groups()[0])
-            location_1 = [float(v)*0.01 for v in one_data_match.groups()[1:5]]
+            data = one_data_match.groups()
+            marker_id_1 = int(data[0])
+            location_1 = [float(data[1]) * np.pi / 180] + [float(v)*0.01 for v in one_data_match.groups()[2:5]]
             marker_id_2 = location_2 = None
         elif re.match(MESSAGE_UTIL.DEAD_ZONE_MESSAGE_REGEX, output_str):
             marker_id_1 = location_1 = marker_id_2 = location_2 = None
