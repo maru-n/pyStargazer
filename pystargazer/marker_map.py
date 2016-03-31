@@ -11,7 +11,7 @@ class MarkerMap(object):
         super(MarkerMap, self).__init__()
         self.__m = {}
         try:
-            map_data = np.loadtxt(marker_map_file, comments="#")
+            map_data = np.loadtxt(marker_map_file, comments="#", ndmin=2)
         except Exception as e:
             return
 

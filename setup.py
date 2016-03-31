@@ -12,6 +12,6 @@ setup(
         author           = __author__,
         url              = 'https://github.com/maru-n/pyStargazer.git',
         packages         = ['pystargazer'],
-        install_requires = [],
-        requires         =  ['pyserial', 'numpy'],
+        install_requires = ['pyserial', 'numpy'],
+        requires         = []
         )

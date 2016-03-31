@@ -1,2 +1,3 @@
 pystargazer/__pycache__
 examples/pystargazer
+*.pyc
