@@ -4,6 +4,12 @@
 import sys
 from pystargazer import *
 import time
+from os import path
+
+if len(sys.argv) is not 2:
+    print("Usage:")
+    print("{} [device]".format(path.basename(__file__)))
+    sys.exit()
 
 serial_device = sys.argv[1]
 if len(sys.argv) == 3:
