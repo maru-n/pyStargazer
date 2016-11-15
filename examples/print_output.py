@@ -6,9 +6,9 @@ from pystargazer import *
 import time
 from os import path
 
-if len(sys.argv) is not 2:
+if len(sys.argv) < 2:
     print("Usage:")
-    print("{} [device]".format(path.basename(__file__)))
+    print("{} [device] [marker_map]".format(path.basename(__file__)))
     sys.exit()
 
 serial_device = sys.argv[1]
