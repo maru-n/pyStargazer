@@ -3,4 +3,7 @@ examples/pystargazer
 *.pyc
 build
 pystargazer.egg-info
+<<<<<<< HEAD
 dist
+=======
+>>>>>>> e622cb1336896a29c6045d73df6bb6fbeed7bd60
