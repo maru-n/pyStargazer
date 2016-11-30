@@ -1,3 +1,5 @@
 pystargazer/__pycache__
 examples/pystargazer
 *.pyc
+build
+pystargazer.egg-info
