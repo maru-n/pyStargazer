@@ -3,15 +3,15 @@
 
 
 from setuptools import setup
-from pystargazer import __author__, __version__
 
 setup(
         name             = 'pystargazer',
-        version          = __version__,
+        version          = "0.0.1",
         description      = 'python class to use StarGazer by Hagisonic.',
-        author           = __author__,
+        author           = "marun",
         url              = 'https://github.com/maru-n/pyStargazer.git',
         packages         = ['pystargazer'],
         install_requires = ['pyserial', 'numpy'],
-        requires         = []
+        requires         = [],
+        test_suite       = 'tests'
         )

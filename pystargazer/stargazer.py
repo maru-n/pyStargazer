@@ -3,7 +3,6 @@
 
 from .utils import *
 from .stargazer_data import *
-from .marker_map import *
 from threading import Thread, Event
 import serial
 import time
@@ -15,15 +14,15 @@ class Stargazer(object):
 
     DEBUG = False
 
-    def __init__(self, serial_device_name, marker_map_file=None, multi_id=True):
+    def __init__(self, serial_device_name, marker_map=None, multi_id=True):
         if not multi_id:
             raise StargazerException("Single ID version is not implemented now. use legacy version.")
         super(Stargazer, self).__init__()
         self.__is_multi_id = multi_id
         self.__latest_data = None
-        self.__marker_map = MarkerMap(marker_map_file)
-        if not self.__marker_map:
-            warnings.warn("Marker map file is not specified or invalid. Location data will not be calculated.")
+        self.__marker_map = marker_map
+        #if not self.__marker_map:
+        #    warnings.warn("Marker map file is not specified or invalid. Location data will not be calculated.")
         self.__serial = serial.Serial(serial_device_name,
                                       baudrate=115200,
                                       bytesize=serial.EIGHTBITS,

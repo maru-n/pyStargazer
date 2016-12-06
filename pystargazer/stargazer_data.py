@@ -16,10 +16,13 @@ class StargazerData(object):
             raise StarGazerException("Single ID version is not implemented now. use legacy version.")
 
         if type(output_str) != str:
-            raise StarGazerException("Invalid output string: " + str(output_str))
+            raise StarGazerException("Invalid output_str type: " + str(type(output_str)))
 
         self.time = time.time()
         self.raw_string = output_str
+        self.angle = self.x = self.y = self.z = None
+        self.markers = None
+        self.is_deadzone = False
 
         two_data_match = re.search(MESSAGE_UTIL.TWO_DATA_REGEX, output_str)
         one_data_match = re.search(MESSAGE_UTIL.ONE_DATA_REGEX, output_str)
@@ -36,22 +39,21 @@ class StargazerData(object):
             location_1 = [float(data[1]) * np.pi / 180] + [float(v)*0.01 for v in one_data_match.groups()[2:5]]
             marker_id_2 = location_2 = None
         elif re.match(MESSAGE_UTIL.DEAD_ZONE_MESSAGE_REGEX, output_str):
+            self.is_deadzone = True
             marker_id_1 = location_1 = marker_id_2 = location_2 = None
         else:
             warnings.warn('Invalid output string: ' + output_str)
             marker_id_1 = location_1 = marker_id_2 = location_2 = None
 
         try:
-            abs_location_1 = marker_map.get_location(marker_id_1) + location_1
+            abs_location_1 = marker_map[marker_id_1] + location_1
         except (KeyError, TypeError) as e:
             abs_location_1 = None
         try:
-            abs_location_2 = marker_map.get_location(marker_id_2) + location_2
+            abs_location_2 = marker_map[marker_id_2] + location_2
         except (KeyError, TypeError) as e:
             abs_location_2 = None
 
-        self.angle = self.x = self.y = self.z = None
-        self.markers = None
         if abs_location_1 is not None and abs_location_2 is not None:
             self.angle, self.x, self.y, self.z = ((abs_location_1 + abs_location_2)/2.).tolist()
             self.markers = [marker_id_1, marker_id_2]
