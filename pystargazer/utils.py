@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from enum import Enum
+import warnings
 
 
 class StargazerException(Exception):

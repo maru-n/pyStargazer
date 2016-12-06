@@ -7,21 +7,52 @@ import time
 import re
 import warnings
 
-class StargazerData(object):
-    """docstring for StargazerData"""
+
+class LocationData(object):
+
+    def __init__(self, marker_id=None, x=None, y=None, z=None, angle=None):
+        super(LocationData, self).__init__()
+        self.marker_id = marker_id
+        self.x = x
+        self.y = y
+        self.z = z
+        self.angle = angle
+
+    @property
+    def have_location_data(self):
+        for i in [self.x, self.y, self.z, self.angle]:
+            if i is None:
+                return False
+        return True
+
+    def __array__(self):
+        return np.array([self.x, self.y, self.z, self.angle])
+
+
+class StargazerData(LocationData):
 
     def __init__(self, output_str, multi_id=True, marker_map=None):
         super(StargazerData, self).__init__()
         if not multi_id:
-            raise StarGazerException("Single ID version is not implemented now. use legacy version.")
+            raise StargazerException("Single ID version is not implemented now. use legacy version.")
 
         if type(output_str) != str:
-            raise StarGazerException("Invalid output_str type: " + str(type(output_str)))
+            raise StargazerException("Invalid output_str type: " + str(type(output_str)))
 
+        if not marker_map:
+            marker_map = {}
+        try:
+            for i in marker_map:
+                if len(marker_map[i]) != 4:
+                    raise StargazerException("Invalid marker_map data on {} with {}".format(i, marker_map[i]))
+        except Exception as e:
+            raise StargazerException("Invalid marker_map data.")
+
+        self.marker_id = []
         self.time = time.time()
         self.raw_string = output_str
-        self.angle = self.x = self.y = self.z = None
-        self.markers = None
+        self.observed_markers = []
+        self.local_location = []
         self.is_deadzone = False
 
         two_data_match = re.search(MESSAGE_UTIL.TWO_DATA_REGEX, output_str)
@@ -29,41 +60,38 @@ class StargazerData(object):
 
         if two_data_match:
             data = two_data_match.groups()
-            marker_id_1 = int(data[0])
-            location_1 = [float(data[1]) * np.pi / 180] + [float(v)*0.01 for v in data[2:5]]
-            marker_id_2 = int(data[5])
-            location_2 = [float(data[6]) * np.pi / 180] + [float(v)*0.01 for v in data[7:10]]
+            ld1 = LocationData(int(data[0]), *[float(v)*0.01 for v in data[2:5]], float(data[1]) * np.pi / 180)
+            ld2 = LocationData(int(data[5]), *[float(v)*0.01 for v in data[7:10]], float(data[6]) * np.pi / 180)
+            self.local_location.append(ld1)
+            self.local_location.append(ld2)
+            self.observed_markers.append(ld1.marker_id)
+            self.observed_markers.append(ld2.marker_id)
         elif one_data_match:
             data = one_data_match.groups()
-            marker_id_1 = int(data[0])
-            location_1 = [float(data[1]) * np.pi / 180] + [float(v)*0.01 for v in one_data_match.groups()[2:5]]
-            marker_id_2 = location_2 = None
+            ld = LocationData(int(data[0]), *[float(v)*0.01 for v in data[2:5]], float(data[1]) * np.pi / 180)
+            self.local_location.append(ld)
+            self.observed_markers.append(ld.marker_id)
         elif re.match(MESSAGE_UTIL.DEAD_ZONE_MESSAGE_REGEX, output_str):
             self.is_deadzone = True
-            marker_id_1 = location_1 = marker_id_2 = location_2 = None
         else:
-            warnings.warn('Invalid output string: ' + output_str)
-            marker_id_1 = location_1 = marker_id_2 = location_2 = None
+            warnings.warn('Invalid output string: ' + output_str, RuntimeWarning)
 
-        try:
-            abs_location_1 = marker_map[marker_id_1] + location_1
-        except (KeyError, TypeError) as e:
-            abs_location_1 = None
-        try:
-            abs_location_2 = marker_map[marker_id_2] + location_2
-        except (KeyError, TypeError) as e:
-            abs_location_2 = None
+        dnum = 0
+        for loc in self.local_location:
+            mid = loc.marker_id
+            if (marker_map is not None) and (mid in marker_map):
+                if self.angle is None:
+                    self.angle = self.x = self.y = self.z = 0.0
+                self.marker_id.append(mid)
+                abs_location = np.array(marker_map[mid]) + np.array(loc)
+                self.x += abs_location[0]
+                self.y += abs_location[1]
+                self.z += abs_location[2]
+                self.angle += abs_location[3]
+                dnum += 1
 
-        if abs_location_1 is not None and abs_location_2 is not None:
-            self.angle, self.x, self.y, self.z = ((abs_location_1 + abs_location_2)/2.).tolist()
-            self.markers = [marker_id_1, marker_id_2]
-        elif abs_location_1 is not None:
-            self.angle, self.x, self.y, self.z = abs_location_1.tolist()
-            self.markers = [marker_id_1]
-        elif abs_location_2 is not None:
-            self.angle, self.x, self.y, self.z = abs_location_2.tolist()
-            self.markers = [marker_id_2]
-
-
-    def __bool__(self):
-        return (self.x is not None)
+        if dnum != 0:
+            self.angle /= dnum
+            self.x /= dnum
+            self.y /= dnum
+            self.z /= dnum

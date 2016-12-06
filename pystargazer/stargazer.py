@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from .utils import *
-from .stargazer_data import *
+from .stargazer_data import StargazerData
 from threading import Thread, Event
 import serial
 import time
