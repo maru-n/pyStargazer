@@ -4,3 +4,4 @@ examples/pystargazer
 build
 pystargazer.egg-info
 dist
+docs
