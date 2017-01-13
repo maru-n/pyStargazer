@@ -6,15 +6,15 @@ import warnings
 import numpy as np
 
 
-# usecols=(id, x, y, z, angle)
+# usecols=(id, x, y, z)
 # default is none that mean (0,1,2,3,4)
 def load_marker_map(fname, comments='#', delimiter=None, skiprows=0, usecols=None):
     raw_data = np.loadtxt(fname, comments=comments, delimiter=delimiter, skiprows=skiprows, usecols=usecols)
     marker_map = {}
     for l in raw_data:
         marker_id = int(l[0])
-        x, y, z, angle = l[1:5]
-        marker_map[marker_id] = [x, y, z, angle]
+        x, y, z = l[1:4]
+        marker_map[marker_id] = [x, y, z]
     return marker_map
 
 

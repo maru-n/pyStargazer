@@ -43,7 +43,7 @@ class StargazerData(LocationData):
             marker_map = {}
         try:
             for i in marker_map:
-                if len(marker_map[i]) != 4:
+                if len(marker_map[i]) != 3:
                     raise StargazerException("Invalid marker_map data on {} with {}".format(i, marker_map[i]))
         except Exception as e:
             raise StargazerException("Invalid marker_map data.")
@@ -60,15 +60,15 @@ class StargazerData(LocationData):
 
         if two_data_match:
             data = two_data_match.groups()
-            ld1 = LocationData(int(data[0]), *[float(v)*0.01 for v in data[2:5]], float(data[1]) * np.pi / 180)
-            ld2 = LocationData(int(data[5]), *[float(v)*0.01 for v in data[7:10]], float(data[6]) * np.pi / 180)
+            ld1 = LocationData(int(data[0]), float(data[2])*0.01, float(data[3])*0.01, -float(data[4])*0.01, float(data[1]) * np.pi / 180)
+            ld2 = LocationData(int(data[5]), float(data[7])*0.01, float(data[8])*0.01, -float(data[9])*0.01, float(data[6]) * np.pi / 180)
             self.local_location.append(ld1)
             self.local_location.append(ld2)
             self.observed_markers.append(ld1.marker_id)
             self.observed_markers.append(ld2.marker_id)
         elif one_data_match:
             data = one_data_match.groups()
-            ld = LocationData(int(data[0]), *[float(v)*0.01 for v in data[2:5]], float(data[1]) * np.pi / 180)
+            ld = LocationData(int(data[0]), float(data[2])*0.01, float(data[3])*0.01, -float(data[4])*0.01, float(data[1]) * np.pi / 180)
             self.local_location.append(ld)
             self.observed_markers.append(ld.marker_id)
         elif re.match(MESSAGE_UTIL.DEAD_ZONE_MESSAGE_REGEX, output_str):
@@ -83,11 +83,11 @@ class StargazerData(LocationData):
                 if self.angle is None:
                     self.angle = self.x = self.y = self.z = 0.0
                 self.marker_id.append(mid)
-                abs_location = np.array(marker_map[mid]) + np.array(loc)
+                abs_location = np.array(marker_map[mid]) + np.array(loc)[0:3]
                 self.x += abs_location[0]
                 self.y += abs_location[1]
                 self.z += abs_location[2]
-                self.angle += abs_location[3]
+                self.angle += loc.angle
                 dnum += 1
 
         if dnum != 0:

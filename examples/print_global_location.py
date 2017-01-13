@@ -13,12 +13,12 @@ if len(sys.argv) != 2:
 
 serial_device = sys.argv[1]
 
-# {marker_id: [x,y,z,angle],,,}
+# {marker_id: [x,y,z],,,}
 marker_map = {
-    24836: [0, 0, 0, 0],
-    25092: [1.5, 0, 0, 0],
-    24594: [0, -1.5, 0, 0],
-    24706: [1.5, -1.5, 0, 0]
+    24836: [0, 0, 0],
+    25092: [1.5, 0, 0],
+    24594: [0, -1.5, 0],
+    24706: [1.5, -1.5, 0]
 }
 sg = Stargazer(serial_device, marker_map)
 while True:
