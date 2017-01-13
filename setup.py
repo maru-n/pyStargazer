@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
         name             = 'pystargazer',
-        version          = "0.0.1",
+        version          = "0.0.2",
         description      = 'python class to use StarGazer by Hagisonic.',
         author           = "marun",
         url              = 'https://github.com/maru-n/pyStargazer.git',
